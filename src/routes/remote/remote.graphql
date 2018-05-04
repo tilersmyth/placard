@@ -1,0 +1,9 @@
+query($deviceId: String!, $accountId: String!) {
+  GetRemote(deviceId: $deviceId, accountId: $accountId) {
+    ok
+    device {
+      url
+      whitelist
+    }
+  }
+}

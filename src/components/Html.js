@@ -36,14 +36,29 @@ class Html extends React.Component {
 
   render() {
     const { title, description, styles, scripts, app, children } = this.props;
+    const fullHeight = {
+      height: '100%',
+    };
+    const bodyStyle = {
+      height: '100%',
+      margin: 0,
+    };
     return (
-      <html className="no-js" lang="en">
+      <html className="no-js" lang="en" style={fullHeight}>
         <head>
           <meta charSet="utf-8" />
           <meta httpEquiv="x-ua-compatible" content="ie=edge" />
           <title>{title}</title>
           <meta name="description" content={description} />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css?family=Roboto:300,400,500"
+          />
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/icon?family=Material+Icons"
+          />
           {scripts.map(script => (
             <link key={script} rel="preload" href={script} as="script" />
           ))}
@@ -57,8 +72,12 @@ class Html extends React.Component {
             />
           ))}
         </head>
-        <body>
-          <div id="app" dangerouslySetInnerHTML={{ __html: children }} />
+        <body style={bodyStyle}>
+          <div
+            id="app"
+            style={fullHeight}
+            dangerouslySetInnerHTML={{ __html: children }}
+          />
           <script
             dangerouslySetInnerHTML={{ __html: `window.App=${serialize(app)}` }}
           />

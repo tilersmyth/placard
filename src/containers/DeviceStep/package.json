@@ -1,0 +1,6 @@
+{
+  "name": "DeviceStep",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./DeviceStep.js"
+}

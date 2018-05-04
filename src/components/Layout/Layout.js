@@ -9,14 +9,11 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import withStyles from 'isomorphic-style-loader/lib/withStyles';
+import { withStyles } from 'material-ui/styles';
 
-// external-global styles must be imported in your JS.
-import normalizeCss from 'normalize.css';
-import s from './Layout.css';
-import Header from '../Header';
-import Feedback from '../Feedback';
-import Footer from '../Footer';
+const styles = theme => ({
+  root: { backgroundColor: theme.palette.layoutBg, height: '100%' },
+});
 
 class Layout extends React.Component {
   static propTypes = {
@@ -24,15 +21,9 @@ class Layout extends React.Component {
   };
 
   render() {
-    return (
-      <div>
-        <Header />
-        {this.props.children}
-        <Feedback />
-        <Footer />
-      </div>
-    );
+    const { classes } = this.props;
+    return <div className={classes.root}>{this.props.children}</div>;
   }
 }
 
-export default withStyles(normalizeCss, s)(Layout);
+export default withStyles(styles)(Layout);

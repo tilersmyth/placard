@@ -8,28 +8,41 @@
  */
 
 import path from 'path';
+import Promise from 'bluebird';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
 import expressJwt, { UnauthorizedError as Jwt401Error } from 'express-jwt';
 import { graphql } from 'graphql';
 import expressGraphQL from 'express-graphql';
-import jwt from 'jsonwebtoken';
 import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
+import { getDataFromTree } from 'react-apollo';
 import PrettyError from 'pretty-error';
+
+import { SheetsRegistry } from 'react-jss/lib/jss';
+import JssProvider from 'react-jss/lib/JssProvider';
+import {
+  MuiThemeProvider,
+  createMuiTheme,
+  createGenerateClassName,
+} from 'material-ui/styles';
+import { teal, grey } from 'material-ui/colors';
+
+import createApolloClient from './core/createApolloClient';
 import App from './components/App';
 import Html from './components/Html';
 import { ErrorPageWithoutStyle } from './routes/error/ErrorPage';
 import errorPageStyle from './routes/error/ErrorPage.css';
 import createFetch from './createFetch';
-import passport from './passport';
 import router from './router';
 import models from './data/models';
 import schema from './data/schema';
 // import assets from './asset-manifest.json'; // eslint-disable-line import/no-unresolved
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
+import configureStore from './store/configureStore';
+import { setRuntimeVariable } from './actions/runtime';
 import config from './config';
 
 process.on('unhandledRejection', (reason, p) => {
@@ -68,86 +81,118 @@ app.use(
   expressJwt({
     secret: config.auth.jwt.secret,
     credentialsRequired: false,
-    getToken: req => req.cookies.id_token,
+    getToken: req => req.cookies.token,
   }),
 );
 // Error handler for express-jwt
 app.use((err, req, res, next) => {
-  // eslint-disable-line no-unused-vars
+  // eslint-disable-line no-unused-va
   if (err instanceof Jwt401Error) {
-    console.error('[express-jwt-error]', req.cookies.id_token);
+    console.log(err);
+    console.error('[express-jwt-error]', req.cookies.token);
     // `clearCookie`, otherwise user can't use web-app until cookie expires
-    res.clearCookie('id_token');
+    res.clearCookie('token');
+    // redirect to login
+    res.redirect('/');
   }
   next(err);
 });
 
-app.use(passport.initialize());
-
-app.get(
-  '/login/facebook',
-  passport.authenticate('facebook', {
-    scope: ['email', 'user_location'],
-    session: false,
-  }),
-);
-app.get(
-  '/login/facebook/return',
-  passport.authenticate('facebook', {
-    failureRedirect: '/login',
-    session: false,
-  }),
-  (req, res) => {
-    const expiresIn = 60 * 60 * 24 * 180; // 180 days
-    const token = jwt.sign(req.user, config.auth.jwt.secret, { expiresIn });
-    res.cookie('id_token', token, { maxAge: 1000 * expiresIn, httpOnly: true });
-    res.redirect('/');
-  },
-);
-
 //
 // Register API middleware
 // -----------------------------------------------------------------------------
-app.use(
-  '/graphql',
-  expressGraphQL(req => ({
-    schema,
-    graphiql: __DEV__,
-    rootValue: { request: req },
-    pretty: __DEV__,
-  })),
-);
+// https://github.com/graphql/express-graphql#options
+const graphqlMiddleware = expressGraphQL((req, res) => ({
+  schema,
+  graphiql: __DEV__,
+  rootValue: { request: req, response: res },
+  pretty: __DEV__,
+  context: {
+    user: req.user ? req.user.user : null,
+    secret: config.auth.jwt.secret,
+  },
+}));
+
+app.use('/graphql', graphqlMiddleware);
 
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------
 app.get('*', async (req, res, next) => {
   try {
-    const css = new Set();
+    // const css = new Set();
 
-    // Enables critical path CSS rendering
-    // https://github.com/kriasoft/isomorphic-style-loader
-    const insertCss = (...styles) => {
-      // eslint-disable-next-line no-underscore-dangle
-      styles.forEach(style => css.add(style._getCss()));
-    };
+    // // Enables critical path CSS rendering
+    // // https://github.com/kriasoft/isomorphic-style-loader
+    // const insertCss = (...styles) => {
+    //   // eslint-disable-next-line no-underscore-dangle
+    //   styles.forEach(style => css.add(style._getCss()));
+    // };
+
+    // Create a sheetsRegistry instance.
+    const sheetsRegistry = new SheetsRegistry();
+
+    // Create a theme instance.
+    const theme = createMuiTheme({
+      palette: {
+        primary: { main: teal.A700, contrastText: '#fff' },
+        lightBg: grey[100],
+        link: grey[500],
+      },
+    });
+
+    const generateClassName = createGenerateClassName();
+
+    const apolloClient = createApolloClient({
+      schema,
+      rootValue: { request: req },
+      context: {
+        user: req.user ? req.user.user : null,
+      },
+    });
 
     // Universal HTTP client
     const fetch = createFetch(nodeFetch, {
       baseUrl: config.api.serverUrl,
       cookie: req.headers.cookie,
+      apolloClient,
       schema,
       graphql,
     });
 
+    const initialState = {
+      user: {
+        isAuth: false,
+      },
+    };
+
+    const store = configureStore(initialState, {
+      cookie: req.headers.cookie,
+      fetch,
+      // I should not use `history` on server.. but how I do redirection? follow universal-router
+      history: null,
+    });
+
+    store.dispatch(
+      setRuntimeVariable({
+        name: 'initialNow',
+        value: Date.now(),
+      }),
+    );
+
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html
     const context = {
-      insertCss,
+      // insertCss,
       fetch,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,
+      // You can access redux through react-redux connect
+      store,
+      storeSubscription: null,
+      // Apollo Client for use with react-apollo
+      client: apolloClient,
     };
 
     const route = await router.resolve(context);
@@ -158,10 +203,25 @@ app.get('*', async (req, res, next) => {
     }
 
     const data = { ...route };
-    data.children = ReactDOM.renderToString(
-      <App context={context}>{route.component}</App>,
+    const rootComponent = (
+      <JssProvider
+        registry={sheetsRegistry}
+        generateClassName={generateClassName}
+      >
+        <App context={context}>
+          <MuiThemeProvider theme={theme} sheetsManager={new Map()}>
+            {route.component}
+          </MuiThemeProvider>
+        </App>
+      </JssProvider>
     );
-    data.styles = [{ id: 'css', cssText: [...css].join('') }];
+
+    await getDataFromTree(rootComponent);
+    // this is here because of Apollo redux APOLLO_QUERY_STOP action
+    await Promise.delay(0);
+    data.children = await ReactDOM.renderToString(rootComponent);
+    const css = sheetsRegistry.toString();
+    data.styles = [{ id: 'jss-server-side', cssText: [...css].join('') }];
 
     const scripts = new Set();
     const addChunk = chunk => {
@@ -174,10 +234,17 @@ app.get('*', async (req, res, next) => {
     addChunk('client');
     if (route.chunk) addChunk(route.chunk);
     if (route.chunks) route.chunks.forEach(addChunk);
-
     data.scripts = Array.from(scripts);
+
+    // Furthermore invoked actions will be ignored, client will not receive them!
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log('Serializing store...');
+    }
     data.app = {
       apiUrl: config.api.clientUrl,
+      state: context.store.getState(),
+      apolloState: context.client.extract(),
     };
 
     const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);

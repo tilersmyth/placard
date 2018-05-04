@@ -33,7 +33,9 @@ module.exports = {
   },
 
   // Database
-  databaseUrl: process.env.DATABASE_URL || 'sqlite:database.sqlite',
+  databaseUrl:
+    process.env.DATABASE_URL ||
+    'postgres://display_admin:display_pw@localhost:5432/display',
 
   // Web analytics
   analytics: {

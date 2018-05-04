@@ -1,0 +1,9 @@
+query($id: String!) {
+  GetDevice(id: $id) {
+    id
+    deviceId
+    url
+    nickname
+    whitelist
+  }
+}

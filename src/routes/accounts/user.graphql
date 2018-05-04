@@ -1,0 +1,14 @@
+query {
+  me {
+    id
+    firstName
+    lastName
+    email
+    accounts {
+      id
+      nickname
+      location
+      default
+    }
+  }
+}

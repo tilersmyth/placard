@@ -8,6 +8,7 @@
  */
 
 import DataType from 'sequelize';
+import bcrypt from 'bcrypt';
 import Model from '../sequelize';
 
 const User = Model.define(
@@ -19,18 +20,48 @@ const User = Model.define(
       primaryKey: true,
     },
 
-    email: {
-      type: DataType.STRING(255),
-      validate: { isEmail: true },
+    firstName: {
+      type: DataType.STRING,
+      field: 'first_name',
     },
 
-    emailConfirmed: {
+    lastName: {
+      type: DataType.STRING,
+      field: 'last_name',
+    },
+
+    email: {
+      type: DataType.STRING(255),
+      unique: { args: true, msg: 'This e-mail is already in use' },
+      validate: {
+        isEmail: { args: true, msg: 'Email is invalid' },
+      },
+    },
+
+    password: {
+      type: DataType.STRING,
+      validate: {
+        len: { args: [5, 100], msg: 'Password must be atleast 5 characters' },
+      },
+    },
+
+    role: {
+      type: DataType.STRING,
+      defaultValue: 'user',
+    },
+
+    active: {
       type: DataType.BOOLEAN,
       defaultValue: false,
     },
   },
   {
-    indexes: [{ fields: ['email'] }],
+    hooks: {
+      afterValidate: async user => {
+        // eslint-disable-next-line no-param-reassign
+        user.password = await bcrypt.hash(user.password, 12);
+      },
+    },
   },
 );
 

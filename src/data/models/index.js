@@ -12,6 +12,9 @@ import User from './User';
 import UserLogin from './UserLogin';
 import UserClaim from './UserClaim';
 import UserProfile from './UserProfile';
+import Account from './Account';
+import Device from './Device';
+import Member from './Member';
 
 User.hasMany(UserLogin, {
   foreignKey: 'userId',
@@ -34,9 +37,32 @@ User.hasOne(UserProfile, {
   onDelete: 'cascade',
 });
 
+User.belongsToMany(Account, {
+  through: Member,
+  foreignKey: {
+    name: 'userId',
+    field: 'user_id',
+  },
+});
+
+Account.belongsToMany(User, {
+  through: Member,
+  foreignKey: {
+    name: 'accountId',
+    field: 'account_id',
+  },
+});
+
+Account.hasOne(Device, {
+  foreignKey: {
+    name: 'accountId',
+    field: 'account_id',
+  },
+});
+
 function sync(...args) {
   return sequelize.sync(...args);
 }
 
 export default { sync };
-export { User, UserLogin, UserClaim, UserProfile };
+export { User, UserLogin, UserClaim, UserProfile, Account, Device, Member };

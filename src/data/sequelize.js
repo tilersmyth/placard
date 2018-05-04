@@ -12,8 +12,10 @@ import config from '../config';
 
 const sequelize = new Sequelize(config.databaseUrl, {
   operatorsAliases: Op,
+  dialect: 'postgres',
   define: {
     freezeTableName: true,
+    underscored: true,
   },
 });
 

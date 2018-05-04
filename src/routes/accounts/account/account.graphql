@@ -1,0 +1,14 @@
+query($id: String!) {
+  GetAccount(id: $id) {
+    id
+    nickname
+    location
+    devices {
+      id
+      deviceId
+      url
+      nickname
+      whitelist
+    }
+  }
+}

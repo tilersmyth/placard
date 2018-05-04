@@ -9,6 +9,8 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
+import Typography from 'material-ui/Typography';
+
 import history from '../../history';
 
 function isLeftClickEvent(event) {
@@ -50,9 +52,11 @@ class Link extends React.Component {
   render() {
     const { to, children, ...props } = this.props;
     return (
-      <a href={to} {...props} onClick={this.handleClick}>
-        {children}
-      </a>
+      <Typography>
+        <a href={to} {...props} onClick={this.handleClick}>
+          {children}
+        </a>
+      </Typography>
     );
   }
 }

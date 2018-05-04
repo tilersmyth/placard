@@ -1,0 +1,6 @@
+{
+  "name": "AddAccountDialog",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./AddAccountDialog.js"
+}
